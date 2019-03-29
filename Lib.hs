@@ -1,9 +1,6 @@
 -- Autor: Jakub Wróblewski 386401
+module Lib where
 import Mon
-
-cat :: String -> String
-cat xs = xs
-main = interact cat
 
 type R = Rational
 type R2 = (R,R)
@@ -18,11 +15,14 @@ data Point = P R2
 -- rysunek złożony z linii
 data Picture = Pic [Line]
 -- transformacja czyli translacja o wektor (Vec) lub rotacja o liczbę (R)
-data Transform = T [(Either Vec R)]
+data Transform = T [(Either Vec R)] deriving (Eq, Show)
 
 
 instance Eq Point where
   P (x, y) == P (x', y') = (x == x') && (y == y')
+
+instance Show Point where
+  show (P (x, y)) = "(" ++ show x ++ ", " ++ show y ++ ")"
 
 instance Eq Vec where
   V (x, y) == V (x', y') = (x == x') && (y == y')
