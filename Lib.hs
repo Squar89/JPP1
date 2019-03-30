@@ -6,7 +6,6 @@ type R = Rational
 type R2 = (R,R)
 type Line = (R2, R2)
 type IntLine = ((Int,Int), (Int,Int))
-type IntRendering = [IntLine]
 
 -- wektor 2D
 data Vec = V R2
@@ -16,7 +15,8 @@ data Point = P R2
 data Picture = Pic [Line]
 -- transformacja czyli translacja o wektor (Vec) lub rotacja o liczbę (R)
 data Transform = T [(Either Vec R)] deriving (Eq, Show)
-
+-- renderowane picture
+data IntRendering = RPic [IntLine]
 
 instance Eq Point where
   P (x, y) == P (x', y') = (x == x') && (y == y')
@@ -33,6 +33,12 @@ instance Show Vec where
 instance Mon Vec where
   m1 = V (0, 0)
   V (x, y) >< V (x', y') = V (x + x', y + y')
+
+instance Show IntRendering where
+  show (RPic []) = ""
+  show (RPic (((startX, startY), (endX, endY)):t)) =
+    show startX ++ " " ++ show startY ++ " moveto "
+    ++ show endX ++ " " ++ show endY ++ " lineto\n"
 
 instance Mon Transform where
   m1 = T []
@@ -88,7 +94,7 @@ rectangle width height = Pic [a, b, c, d] where
 -- Obrazowanie przy danym współczynniku powiększenia
 -- z zaokrągleniem do najbliższych wartości całkowitych
 renderScaled :: Int -> Picture -> IntRendering
-renderScaled ratio (Pic lineList) = map mulLine lineList where
+renderScaled ratio (Pic lineList) = (RPic (map mulLine lineList)) where
   mulLine (startPoint, endPoint) = (mulPoint startPoint, mulPoint endPoint)
   mulPoint (x, y) = ((round (x * (fromIntegral ratio))), (round (y * (fromIntegral ratio))))
 

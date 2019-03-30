@@ -2,6 +2,7 @@
 import Lib
 import Mon
 import Text.Read
+import System.Environment
 
 -- Stan składajacy się z:
 --- stosu liczb rzeczywistych
@@ -11,7 +12,16 @@ import Text.Read
 data State = S [Rational] (Maybe Point) (Maybe (Point, Point, Integer)) Picture
 
 main :: IO ()
-main = interact program
+main = do
+    args <- getArgs
+    case parseArgs args of
+      Nothing -> putStrLn "Pass one int value to scale resulting image (Default value = 1)"
+      Just n -> interact (program n)
+
+parseArgs :: [String] -> Maybe Int
+parseArgs [] = Just 1
+parseArgs (h:[]) = readMaybe h :: Maybe Int
+parseArgs list = Nothing
 
 prolog :: String
 prolog = "300 400 translate\n"
@@ -35,7 +45,7 @@ executeCommand state word
   | word == "mul"         = executeOperation state (*)
   | word == "moveto"      = executeMoveTo state
   | word == "lineto"      = executeLineTo state
-  | word == "closepath"   = (state, Nothing)
+  | word == "closepath"   = executeClosePath state
   | otherwise             = (state, Nothing)
 
 getTwoFromStack :: State -> (State, Maybe (Rational, Rational))
@@ -80,14 +90,29 @@ executeLineTo state =
           Just (show x ++ " " ++ show y ++ "lineto\n"))
         getResult state pair = (state, Nothing)
 
-handleInput :: State -> [String] -> String -> String
-handleInput _ [] output = output ++ "\n" ++ epilog
-handleInput state@(S stack current_point current_path picture) (word:t) output =
+executeClosePath :: State -> (State, Maybe String)
+executeClosePath state@(S stack current_point current_path picture) =
+  case current_path of
+    Nothing -> (state, Just "")
+    Just(_, _, 1) -> (state, Just "")
+    Just(P(firstX, firstY), _, n) -> 
+      case current_point of
+        Nothing -> (state, Just "")
+        Just(P(cX, cY)) ->
+          ((S stack (Just (P(firstX, firstY)))
+                    (Just (P(firstX, firstY), P(firstX, firstY), n + 1))
+                    (picture & (line (cX, cY) (firstX, firstY)))),
+          Just ("closepath "))
+
+handleInput :: State -> [String] -> Int -> (String)
+handleInput (S stack current_point current_path picture) [] ratio =
+  prolog ++ (show (renderScaled ratio picture)) ++ epilog
+handleInput state@(S stack current_point current_path picture) (word:t) ratio =
   case readMaybeInt word of
-    Just n -> handleInput (S ((fromIntegral n):stack) current_point current_path picture) t output
+    Just n -> handleInput (S ((fromIntegral n):stack) current_point current_path picture) t ratio
     Nothing -> case executeCommand state word of
-      (newState, Just commandOutput) -> handleInput newState t (output ++ commandOutput)
+      (newState, Just commandOutput) -> handleInput newState t ratio
       (newState, Nothing) -> errorMessage
 
-program :: String -> String
-program input = handleInput (S [] Nothing Nothing (Pic [])) (words input) prolog
+program :: Int -> String -> String
+program ratio input = handleInput (S [] Nothing Nothing (Pic [])) (words input) ratio
