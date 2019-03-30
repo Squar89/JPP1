@@ -8,7 +8,7 @@ import Text.Read
 --- bieżącego punktu
 --- bieżącej ścieżki - pierwszy i ostatni jej punkt
 --- pełnego obrazka
-data State = S [Rational] (Maybe Point) (Maybe (Point, Point)) Picture
+data State = S [Rational] (Maybe Point) (Maybe (Point, Point, Integer)) Picture
 
 main :: IO ()
 main = interact program
@@ -20,7 +20,7 @@ epilog :: String
 epilog = "stroke showpage\n"
 
 errorMessage :: String
-errorMessage = "/Courier findfont 24 scalefont setfont 0 0 moveto (Error) show"
+errorMessage = "/Courier findfont 24 scalefont setfont 0 0 moveto (Error) show\n"
 
 readMaybeInt :: String -> Maybe Integer
 readMaybeInt ('+':('-':n)) = Nothing
@@ -33,7 +33,7 @@ executeCommand state word
   | word == "sub"         = executeOperation state (-)
   | word == "div"         = executeDiv state
   | word == "mul"         = executeOperation state (*)
-  | word == "moveto"      = (state, Nothing)
+  | word == "moveto"      = executeMoveTo state
   | word == "lineto"      = (state, Nothing)
   | word == "closepath"   = (state, Nothing)
   | otherwise             = (state, Nothing)
@@ -45,21 +45,29 @@ getTwoFromStack (S (second:(first:t)) current_point current_path picture) =
   ((S t current_point current_path picture), Just (first, second))
 
 executeOperation :: State -> (Rational -> Rational -> Rational) -> (State, Maybe String)
-executeOperation state@(S stack current_point current_path picture) f =
+executeOperation state f =
   case getTwoFromStack state of
     (newState, Nothing) -> (newState, Nothing)
-    (newState, Just (first, second)) ->
+    ((S stack current_point current_path picture), Just (first, second)) ->
       ((S (result:stack) current_point current_path picture), Just "") where
         result = f first second
 
 executeDiv :: State -> (State, Maybe String)
-executeDiv state@(S stack current_point current_path picture) =
+executeDiv state =
   case getTwoFromStack state of
     (newState, Nothing) -> (newState, Nothing)
-    (newState, Just (first, second)) ->
+    (newState@(S stack current_point current_path picture), Just (first, second)) ->
       if second == 0 then (newState, Nothing)
       else ((S (result:stack) current_point current_path picture), Just "") where
         result = first / second
+
+executeMoveTo :: State -> (State, Maybe String)
+executeMoveTo state =
+  case getTwoFromStack state of
+    (newState, Nothing) -> (newState, Nothing)
+    ((S stack current_point current_path picture), Just (x, y)) ->
+      ((S stack (Just (P(x, y))) (Just (P(x, y), P(x, y), 1)) picture),
+      Just (show x ++ " " ++ show y ++ "moveto "))
 
 handleInput :: State -> [String] -> String -> String
 handleInput _ [] output = output ++ "\n" ++ epilog
