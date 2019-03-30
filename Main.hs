@@ -34,7 +34,7 @@ executeCommand state word
   | word == "div"         = executeDiv state
   | word == "mul"         = executeOperation state (*)
   | word == "moveto"      = executeMoveTo state
-  | word == "lineto"      = (state, Nothing)
+  | word == "lineto"      = executeLineTo state
   | word == "closepath"   = (state, Nothing)
   | otherwise             = (state, Nothing)
 
@@ -68,6 +68,17 @@ executeMoveTo state =
     ((S stack current_point current_path picture), Just (x, y)) ->
       ((S stack (Just (P(x, y))) (Just (P(x, y), P(x, y), 1)) picture),
       Just (show x ++ " " ++ show y ++ "moveto "))
+
+executeLineTo :: State -> (State, Maybe String)
+executeLineTo state =
+  case getTwoFromStack state of
+    (newState, Nothing) -> (newState, Nothing)
+    (newState@(S stack current_point current_path picture), Just (x, y)) ->
+      getResult newState (x, y) where
+        getResult (S stack (Just (P (cpoX, cpoY))) (Just (firstP, _, n)) picture) (x, y) =
+          ((S stack (Just (P(x, y))) (Just (firstP, P(x, y), n + 1)) (picture & (line (cpoX, cpoY) (x, y)))),
+          Just (show x ++ " " ++ show y ++ "lineto\n"))
+        getResult state pair = (state, Nothing)
 
 handleInput :: State -> [String] -> String -> String
 handleInput _ [] output = output ++ "\n" ++ epilog
