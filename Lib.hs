@@ -15,7 +15,7 @@ data Point = P R2
 data Picture = Pic [Line]
 -- transformacja czyli translacja o wektor (Vec) lub rotacja o liczbę (R)
 data Transform = T [(Either Vec R)] deriving (Eq, Show)
--- renderowane picture
+-- render rysunku do inta
 data IntRendering = RPic [IntLine]
 
 instance Eq Point where
@@ -39,6 +39,7 @@ instance Show IntRendering where
   show (RPic (((startX, startY), (endX, endY)):t)) =
     show startX ++ " " ++ show startY ++ " moveto "
     ++ show endX ++ " " ++ show endY ++ " lineto\n"
+    ++ show (RPic t)
 
 instance Mon Transform where
   m1 = T []
